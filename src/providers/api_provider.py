@@ -87,6 +87,10 @@ class APIProvider(OddsProvider):
         """Fetch available bookmakers from OddsPapi."""
         if not self.api_key:
             return []
+        try:
+            return self._as_list(self._request("bookmakers", {}))
+        except httpx.HTTPError:
+            return []
 
     def get_tournaments(self) -> List[Dict[str, Any]]:
         """Fetch tournaments for the configured sport. Useful to find Peru tournament IDs."""
@@ -171,10 +175,6 @@ class APIProvider(OddsProvider):
             },
         )
         return self._as_list(raw)
-        try:
-            return self._as_list(self._request("bookmakers", {}))
-        except httpx.HTTPError:
-            return []
 
     def _request(self, endpoint: str, params: Dict[str, Any]) -> Any:
         """Make an authenticated OddsPapi request and raise for HTTP errors."""
@@ -221,21 +221,38 @@ class APIProvider(OddsProvider):
                     key = f"{base['event_id']}::{market_name}"
                     if key not in grouped_bookmakers:
                         grouped_bookmakers[key] = {
-                            "event": {**base, "market": market_name, "bookmakers": []},
-                            "bookmakers": [],
+                            "event": {**base, "market": market_name},
+                            "bookmakers": {},
                         }
-                    grouped_bookmakers[key]["bookmakers"].append(
-                        {"name": bookmaker_name, "country": "Global", "odds": odds}
-                    )
+                    if bookmaker_name not in grouped_bookmakers[key]["bookmakers"]:
+                        grouped_bookmakers[key]["bookmakers"][bookmaker_name] = {
+                            "name": bookmaker_name, "country": "Global", "odds": odds
+                        }
+                    else:
+                        for sel, price in odds.items():
+                            existing = grouped_bookmakers[key]["bookmakers"][bookmaker_name]["odds"]
+                            if sel not in existing or price > existing[sel]:
+                                existing[sel] = price
 
             for item in grouped_bookmakers.values():
                 event = item["event"]
                 event["event_id"] = f"{event['event_id']}_{self._slug(event['market'])}"
-                event["bookmakers"] = item["bookmakers"]
+                event["bookmakers"] = list(item["bookmakers"].values())
                 events.append(event)
 
         self.last_status["normalized_events"] = len(events)
         return events
+
+    KNOWN_OUTCOMES = {
+        "101": "home_win", "102": "draw", "103": "away_win",
+        "101910": "home_win", "101909": "draw", "101908": "away_win",
+        "10761": "home_win", "10762": "draw", "10763": "away_win",
+        "203": "home_win", "204": "draw", "205": "away_win",
+        "213": "home_win", "214": "draw", "215": "away_win",
+        "223": "home_win", "224": "draw", "225": "away_win",
+        "263": "home_win", "264": "draw", "265": "away_win",
+        "273": "home_win", "274": "draw", "275": "away_win",
+    }
 
     def _extract_market_odds(self, market_data: Dict[str, Any]) -> tuple[str, Dict[str, float]]:
         """Extract supported market odds from an OddsPapi market node."""
@@ -244,7 +261,7 @@ class APIProvider(OddsProvider):
         outcomes = market_data.get("outcomes", {})
         self._sample_market(raw_market_id, outcomes)
 
-        for outcome_data in outcomes.values():
+        for outcome_key, outcome_data in outcomes.items():
             player = self._first_active_player(outcome_data)
             if not player:
                 continue
@@ -252,7 +269,7 @@ class APIProvider(OddsProvider):
             if price is None or float(price) <= 1.0:
                 continue
 
-            selection = self._selection_key(player.get("bookmakerOutcomeId"), raw_market_id)
+            selection = self._selection_key(player.get("bookmakerOutcomeId"), raw_market_id, outcome_key=str(outcome_key), player=player)
             if selection:
                 odds[selection] = float(price)
 
@@ -278,23 +295,38 @@ class APIProvider(OddsProvider):
                 return player
         return None
 
-    def _selection_key(self, bookmaker_outcome_id: Any, market_id: str) -> Optional[str]:
-        """Map bookmaker outcome labels to internal analyzer selection keys."""
-        label = str(bookmaker_outcome_id or "").strip().lower()
-        if label in {"home", "1"}:
-            return "home_win"
-        if label in {"draw", "x"}:
-            return "draw"
-        if label in {"away", "2"}:
-            return "away_win"
+    def _selection_key(
+        self,
+        bookmaker_outcome_id: Any,
+        market_id: str,
+        outcome_key: str = "",
+        player: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
+        """Map bookmaker outcome labels or OddsPapi outcome IDs to internal analyzer selection keys."""
+        if outcome_key in self.KNOWN_OUTCOMES:
+            return self.KNOWN_OUTCOMES[outcome_key]
 
-        normalized = label.replace("/", "_").replace(" ", "_")
-        parts = [p for p in normalized.split("_") if p]
-        if len(parts) >= 2:
-            line = next((p for p in parts if self._is_number(p)), None)
-            side = next((p for p in parts if p in {"over", "under"}), None)
-            if line and side:
-                return f"{side}_{line}"
+        label = str(bookmaker_outcome_id or "").strip().lower()
+        player_name = str((player or {}).get("playerName") or "").strip().lower()
+        outcome_name = str((player or {}).get("outcomeName") or "").strip().lower()
+
+        for cand in [label, player_name, outcome_name]:
+            if not cand:
+                continue
+            if cand in {"home", "1", "1/home", "local"} or cand.endswith("/home"):
+                return "home_win"
+            if cand in {"draw", "x", "empate"}:
+                return "draw"
+            if cand in {"away", "2", "2/away", "visita"} or cand.endswith("/away"):
+                return "away_win"
+
+            normalized = cand.replace("/", "_").replace(" ", "_")
+            parts = [p for p in normalized.split("_") if p]
+            if len(parts) >= 2:
+                line = next((p for p in parts if self._is_number(p)), None)
+                side = next((p for p in parts if p in {"over", "under"}), None)
+                if line and side:
+                    return f"{side}_{line}"
 
         if "moneyline" in market_id:
             return None

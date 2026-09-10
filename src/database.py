@@ -173,7 +173,7 @@ class DatabaseManager:
             cursor.execute("DELETE FROM opportunities")
             for opp in opportunities:
                 cursor.execute("""
-                    INSERT INTO opportunities
+                    INSERT OR REPLACE INTO opportunities
                     (opportunity_id, type, event_id, sport, league, home_team, away_team, market, roi, probability, details)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
