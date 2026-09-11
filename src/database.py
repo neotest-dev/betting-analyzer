@@ -52,7 +52,7 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS opportunities (
                     opportunity_id TEXT PRIMARY KEY,
-                    type TEXT NOT NULL, -- 'surebet', 'valuebet', 'range'
+                    type TEXT NOT NULL, -- 'surebet' only
                     event_id TEXT NOT NULL,
                     sport TEXT NOT NULL,
                     league TEXT NOT NULL,
@@ -63,19 +63,6 @@ class DatabaseManager:
                     probability REAL,
                     details TEXT NOT NULL, -- JSON string
                     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # Statistics Table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS statistics (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    team_name TEXT NOT NULL,
-                    sport TEXT NOT NULL,
-                    avg_goals REAL,
-                    avg_corners REAL,
-                    avg_cards REAL,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
 

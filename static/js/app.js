@@ -25,8 +25,19 @@ function updateCalculations(bankroll) {
     const stakeElements = document.querySelectorAll("[data-stake-percentage]");
     stakeElements.forEach((el) => {
         const pct = parseFloat(el.getAttribute("data-stake-percentage")) || 0;
-        const stakeVal = (bankroll * (pct / 100)).toFixed(2);
+        const odds = parseFloat(el.getAttribute("data-odds")) || 0;
+        const stakeVal = Math.round(bankroll * (pct / 100));
         el.textContent = `S/${stakeVal}`;
+
+        if (odds > 0) {
+            const row = el.closest("tr");
+            if (row) {
+                const payoutEl = row.querySelector(".payout-value");
+                if (payoutEl) {
+                    payoutEl.textContent = `S/${(stakeVal * odds).toFixed(2)}`;
+                }
+            }
+        }
     });
 }
 
@@ -49,12 +60,12 @@ async function calculateCustomStake() {
         const data = await response.json();
         if (data.success && data.result) {
             const res = data.result;
-            let html = `<div style="padding: 1rem; background: rgba(15,23,42,0.8); border-radius: 8px;">`;
-            html += `<h4 style="color: #10b981; margin-bottom: 0.5rem;">${res.is_surebet ? '¡Surebet Detectada!' : 'Sin Arbitraje'}</h4>`;
+            let html = `<div class="panel-code">`;
+            html += `<h4 class="${res.is_surebet ? 'text-emerald' : 'text-muted'} mb-sm">${res.is_surebet ? '¡Surebet Detectada!' : 'Sin Arbitraje'}</h4>`;
             html += `<p><strong>ROI:</strong> ${res.roi_percentage}%</p>`;
             html += `<p><strong>Beneficio Proyectado:</strong> S/${res.profit || 0}</p>`;
             if (res.stakes && res.stakes.length > 0) {
-                html += `<ul style="margin-top: 0.5rem; padding-left: 1.2rem;">`;
+                html += `<ul class="mt-sm">`;
                 res.stakes.forEach((s) => {
                     html += `<li>Cuota ${s.odds}: Stake S/${s.stake} (${s.percentage}%) - Retorno: S/${s.payout}</li>`;
                 });
@@ -63,17 +74,17 @@ async function calculateCustomStake() {
             html += `</div>`;
             resultBox.innerHTML = html;
         } else {
-            resultBox.innerHTML = `<p style="color: #f43f5e;">Error: ${data.error || 'Cálculo fallido'}</p>`;
+            resultBox.innerHTML = `<p class="text-danger">Error: ${data.error || 'Cálculo fallido'}</p>`;
         }
     } catch (err) {
-        resultBox.innerHTML = `<p style="color: #f43f5e;">Error de conexión con la API local.</p>`;
+        resultBox.innerHTML = `<p class="text-danger">Error de conexión con la API local.</p>`;
     }
 }
 
 async function refreshRealOdds() {
     const resultBox = document.getElementById("refresh-result-box");
     if (resultBox) {
-        resultBox.innerHTML = `<div style="padding: 1rem; background: rgba(15,23,42,0.8); border-radius: 8px;">Actualizando cuotas reales. Esto consume 1 request de OddsPapi.</div>`;
+        resultBox.innerHTML = `<div class="refresh-pending">Actualizando cuotas reales. Esto consume 1 request de OddsPapi.</div>`;
     }
 
     try {
@@ -84,12 +95,12 @@ async function refreshRealOdds() {
         }
         const report = data.report || {};
         if (resultBox) {
-            resultBox.innerHTML = `<div style="padding: 1rem; background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.35); border-radius: 8px;">Actualización completada: ${report.total_events || 0} eventos y ${report.total_opportunities || 0} oportunidades. Recargando dashboard...</div>`;
+            resultBox.innerHTML = `<div class="refresh-success">Actualización completada: ${report.total_events || 0} eventos y ${report.total_opportunities || 0} oportunidades. Recargando dashboard...</div>`;
         }
         window.setTimeout(() => window.location.reload(), 900);
     } catch (err) {
         if (resultBox) {
-            resultBox.innerHTML = `<p style="color: #f43f5e;">Error al actualizar cuotas reales. Revisa tu API key y cuota disponible.</p>`;
+            resultBox.innerHTML = `<p class="text-danger">Error al actualizar cuotas reales. Revisa tu API key y cuota disponible.</p>`;
         }
     }
 }

@@ -1,73 +1,102 @@
 {% extends "base.html" %}
 
-{% block title %}Surebet Analyzer - Betting Opportunity Analyzer{% endblock %}
+{% block title %}Surebet Analyzer - Arbitrajes Detectados{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <h1 class="page-title">Módulo 1: Surebet Analyzer</h1>
-        <p class="page-subtitle">Detección de arbitrajes matemáticos libres de riesgo directo (inverse sum &lt; 1.00).</p>
+        <h1 class="page-title">Surebet Analyzer</h1>
+        <p class="page-subtitle">Arbitrajes matemáticos libres de riesgo directo cross-bookmaker (inverse sum &lt; 1.00).</p>
     </div>
 </div>
 
-<!-- BANKROLL SELECTOR -->
+<!-- FILTERS -->
 <div class="filter-bar">
-    <div class="filter-group">
-        <label class="filter-label">Capital de Apuesta Seleccionado (S/)</label>
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <input type="range" id="bankroll-input" min="50" max="2000" step="50" value="500" style="width: 200px;">
-            <span id="bankroll-display" style="font-weight: 800; font-size: 1.1rem; color: var(--emerald-surebet);">S/500.00</span>
+    <form method="GET" action="/surebets" class="flex-row full-width">
+        <div class="filter-group">
+            <label class="filter-label" for="bankroll-input">Capital de Apuesta (S/)</label>
+            <div class="flex-wrap gap-sm">
+                <input type="range" id="bankroll-input" class="w-odds" min="50" max="2000" step="50" value="500">
+                <span id="bankroll-display" class="fw-800 fs-xl text-emerald">S/500.00</span>
+            </div>
         </div>
-    </div>
+        <div class="filter-group">
+            <label class="filter-label" for="sport-select">Deporte</label>
+            <select id="sport-select" name="sport" class="input-field w-filter-md">
+                <option value="all">Todos</option>
+                {% if request.args.get('sport') == 'soccer' %}
+                <option value="soccer" selected>Fútbol</option>
+                {% else %}
+                <option value="soccer">Fútbol</option>
+                {% endif %}
+                {% if request.args.get('sport') == 'basketball' %}
+                <option value="basketball" selected>Baloncesto</option>
+                {% else %}
+                <option value="basketball">Baloncesto</option>
+                {% endif %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label" for="min-roi-input">ROI mínimo (%)</label>
+            <input type="number" id="min-roi-input" name="min_roi" class="input-field w-filter-sm" value="{{ request.args.get('min_roi', '') }}" step="0.1" min="0" placeholder="0.0">
+        </div>
+        <button type="submit" class="btn">Filtrar</button>
+    </form>
 </div>
 
 <!-- SUREBETS LIST -->
-<div style="display: flex; flex-direction: column; gap: 1.5rem;">
+<div class="flex-col">
     {% for opp in opportunities %}
-    <div class="card" style="border-left: 5px solid var(--emerald-surebet);">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+    <div class="card card-surebet">
+        <div class="flex-between surebet-header">
             <div>
-                <span class="badge badge-surebet">ARBITRAJE DETECTADO</span>
-                <h3 style="font-size: 1.3rem; font-weight: 800; color: #fff; margin-top: 0.3rem;">
+                <div class="flex-wrap">
+                    <span class="badge badge-surebet">ARBITRAJE DETECTADO</span>
+                    <span class="cross-bm-badge">
+                        ✅ Cross-bookmaker · {{ opp.details.unique_bookmakers_count }} casa{% if opp.details.unique_bookmakers_count != 1 %}s{% endif %}
+                        ({{ opp.details.unique_bookmakers | join(", ") }})
+                    </span>
+                </div>
+                <h3 class="fs-2xl fw-800 text-white mt-sm">
                     {{ opp.home_team }} vs {{ opp.away_team }}
                 </h3>
-                <p style="color: var(--text-muted); font-size: 0.88rem;">
+                <p class="text-muted fs-md">
                     {{ opp.sport }} • {{ opp.league }} | Mercado: <strong>{{ opp.market }}</strong>
                 </p>
             </div>
-            <div style="text-align: right;">
-                <div style="font-size: 0.8rem; color: var(--text-muted);">Suma Inversa: {{ opp.details.inverse_sum }}</div>
-                <div class="roi-positive" style="font-size: 1.8rem;">+{{ opp.roi }}% ROI</div>
+            <div class="text-right">
+                <div class="inverse-label">Suma Inversa: {{ opp.details.inverse_sum }}</div>
+                <div class="roi-positive roi-lg">+{{ opp.roi }}% ROI</div>
             </div>
         </div>
 
-        <h4 style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Distribución de Stakes Recomendada</h4>
-        
-        <div class="table-container" style="background: rgba(15,23,42,0.6);">
+        <h4 class="section-label">Distribución de Stakes Recomendada</h4>
+
+        <div class="table-container panel-dark">
             <table class="custom-table">
                 <thead>
                     <tr>
-                        <th>Selección</th>
-                        <th>Casa de Apuestas</th>
-                        <th>Cuota Decimal</th>
-                        <th>Stake (%)</th>
-                        <th>Stake Recomendado (S/)</th>
-                        <th>Retorno Esperado</th>
+                        <th scope="col">Selección</th>
+                        <th scope="col">Casa de Apuestas</th>
+                        <th scope="col">Cuota</th>
+                        <th scope="col">Apuesta Sugerida</th>
+                        <th scope="col">Ganancia (S/)</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for leg in opp.details.legs %}
+                    {% set stake_val = (500 * (leg.stake_percentage / 100)) | round | int %}
+                    {% set payout_val = "%.2f"|format(stake_val * leg.odds) %}
                     <tr>
                         <td><strong>{{ leg.selection }}</strong></td>
                         <td>{{ leg.bookmaker }}</td>
-                        <td><span style="color: #fff; font-weight: 700;">{{ leg.odds }}</span></td>
-                        <td>{{ leg.stake_percentage }}%</td>
+                        <td><span class="odds-value">{{ leg.odds }}</span></td>
                         <td>
-                            <strong data-stake-percentage="{{ leg.stake_percentage }}" style="color: var(--emerald-surebet);">
-                                S/{{ "%.2f"|format(500 * (leg.stake_percentage / 100)) }}
+                            <strong class="stake-value" data-stake-percentage="{{ leg.stake_percentage }}" data-odds="{{ leg.odds }}">
+                                S/{{ stake_val }}
                             </strong>
                         </td>
-                        <td>S/{{ leg.payout }}</td>
+                        <td class="payout-value text-emerald fw-700">S/{{ payout_val }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -75,8 +104,11 @@
         </div>
     </div>
     {% else %}
-    <div class="card" style="text-align: center; padding: 3rem;">
-        <p style="color: var(--text-muted); font-size: 1.1rem;">No hay oportunidades de Surebet activas en este momento.</p>
+    <div class="card text-center p-xl">
+        <p class="empty-state">No hay surebets cross-bookmaker activas en este momento.</p>
+        <p class="empty-hint">
+            Un arbitraje válido requiere cuotas de al menos 2 casas de apuestas distintas con inverse sum &lt; 1.0.
+        </p>
     </div>
     {% endfor %}
 </div>

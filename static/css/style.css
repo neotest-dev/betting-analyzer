@@ -143,6 +143,7 @@ body {
   font-weight: 800;
   letter-spacing: -0.03em;
   background: linear-gradient(135deg, #ffffff, var(--text-muted));
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -388,3 +389,120 @@ body {
   font-weight: 700;
   margin-bottom: 0.25rem;
 }
+
+/* ===================================================
+   UTILITY CLASSES — replaces all inline styles
+   =================================================== */
+
+/* Layout */
+.flex-between   { display: flex; justify-content: space-between; align-items: flex-start; }
+.flex-center    { display: flex; justify-content: space-between; align-items: center; }
+.flex-row       { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.flex-col       { display: flex; flex-direction: column; gap: 1.5rem; }
+.flex-wrap      { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.grid-auto      { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; }
+.grid-settings  { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+.text-right     { text-align: right; }
+.text-center    { text-align: center; }
+.full-width     { width: 100%; }
+
+/* Spacing */
+.mb-sm   { margin-bottom: 0.5rem; }
+.mb-md   { margin-bottom: 1rem; }
+.mb-lg   { margin-bottom: 1.5rem; }
+.mb-xl   { margin-bottom: 2rem; }
+.mt-sm   { margin-top: 0.25rem; }
+.mt-md   { margin-top: 0.5rem; }
+.mt-lg   { margin-top: 1rem; }
+.gap-sm  { gap: 0.5rem; }
+.p-xl    { padding: 3rem; }
+.p-lg    { padding: 1rem; }
+
+/* Typography */
+.text-white     { color: #fff; }
+.text-muted     { color: var(--text-muted); }
+.text-emerald   { color: var(--emerald-surebet); }
+.text-danger    { color: var(--rose-danger); }
+.fw-800         { font-weight: 800; }
+.fw-700         { font-weight: 700; }
+.fw-600         { font-weight: 600; }
+.fs-xs          { font-size: 0.78rem; }
+.fs-sm          { font-size: 0.82rem; }
+.fs-base        { font-size: 0.85rem; }
+.fs-md          { font-size: 0.88rem; }
+.fs-body        { font-size: 0.9rem; }
+.fs-lg          { font-size: 1rem; }
+.fs-xl          { font-size: 1.1rem; }
+.fs-2xl         { font-size: 1.3rem; }
+.fs-3xl         { font-size: 1.8rem; }
+.fs-4xl         { font-size: 2rem; }
+.uppercase      { text-transform: uppercase; }
+.lh-relaxed     { line-height: 1.5; }
+
+/* Surebet card accent */
+.card-surebet   { border-left: 5px solid var(--emerald-surebet); }
+.card-top       { border-color: var(--emerald-surebet);
+                  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(17,24,39,0.9)); }
+
+/* Inner dark panel (table inside card, code blocks) */
+.panel-dark     { background: rgba(15, 23, 42, 0.6); }
+.panel-code     { background: rgba(15, 23, 42, 0.8); padding: 1rem;
+                  border-radius: var(--radius-md); font-size: 0.85rem;
+                  color: var(--text-muted); }
+
+/* Surebet header section */
+.surebet-header { margin-bottom: 1rem; }
+.section-label  { font-size: 0.9rem; color: var(--text-muted);
+                  margin-bottom: 0.5rem; text-transform: uppercase; }
+
+/* Inverse sum label */
+.inverse-label  { font-size: 0.8rem; color: var(--text-muted); }
+
+/* ROI display sizes */
+.roi-lg         { font-size: 1.8rem; }
+.roi-xl         { font-size: 2rem; }
+
+/* Cross-bookmaker info */
+.cross-bm-info  { color: var(--emerald-surebet); font-size: 0.85rem; margin-top: 0.25rem; }
+.cross-bm-badge { color: var(--emerald-surebet); font-size: 0.82rem; font-weight: 600; }
+
+/* Stake value highlight */
+.stake-value    { color: var(--emerald-surebet); }
+.odds-value     { color: #fff; font-weight: 700; }
+
+/* Button size variants */
+.btn-sm         { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+.btn-md         { padding: 0.5rem 1rem; font-size: 0.88rem; }
+
+/* Calc input widths */
+.w-bankroll     { width: 130px; }
+.w-odds         { width: 200px; }
+.w-filter-sm    { width: 100px; }
+.w-filter-md    { width: 140px; }
+
+/* Provider status grid */
+.status-grid    { color: var(--text-muted); font-size: 0.9rem; }
+
+/* Badges inline in table cells */
+.badge-inline   { margin: 0.15rem; background: rgba(255,255,255,0.08); color: var(--text-main); }
+
+/* Empty state */
+.empty-state    { color: var(--text-muted); font-size: 1.1rem; }
+.empty-hint     { color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem; }
+
+/* History table */
+.code-id        { font-family: monospace; font-size: 0.8rem; }
+.date-cell      { color: var(--text-muted); font-size: 0.85rem; }
+
+/* Refresh result box */
+.refresh-success { padding: 1rem;
+                   background: rgba(16,185,129,0.12);
+                   border: 1px solid rgba(16,185,129,0.35);
+                   border-radius: var(--radius-md); }
+.refresh-pending { padding: 1rem; background: rgba(15,23,42,0.8); border-radius: var(--radius-md); }
+
+/* Section header with action */
+.section-header { display: flex; justify-content: space-between;
+                  align-items: center; margin-top: 1rem; }
+.section-title  { font-size: 1.25rem; font-weight: 700; }
+

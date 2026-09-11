@@ -4,9 +4,6 @@ from src.config import config
 from src.services import service
 from src.database import db
 from src.calculators.stakes import StakeCalculator
-from src.calculators.roi import ROICalculator
-from src.statistics.goals import GoalsStatistics
-from src.statistics.corners import CornersStatistics
 from src.models import CalculationRequest
 
 app = Flask(__name__)
@@ -23,8 +20,10 @@ if config.PROVIDER_MODE != "API":
 # Mandatory Disclaimer text required across all views/footers
 DISCLAIMER = (
     "Los cálculos son estimaciones matemáticas. Las cuotas pueden cambiar, "
-    "existir límites de apuesta y variar las reglas de liquidación de cada operador."
+    "existir límites de apuesta y variar las reglas de liquidación de cada operador. "
+    "Verifica siempre que las cuotas sigan vigentes antes de apostar."
 )
+
 
 @app.context_processor
 def inject_global_vars():
@@ -33,6 +32,7 @@ def inject_global_vars():
         "disclaimer": DISCLAIMER,
         "provider_mode": config.PROVIDER_MODE
     }
+
 
 # ==========================================
 # WEB VIEW ROUTES
@@ -43,7 +43,7 @@ def dashboard():
     """Main Dashboard View"""
     report = service.refresh_and_analyze_all() if config.PROVIDER_MODE != "API" else service.get_summary()
     opps = service.get_filtered_opportunities()
-    
+
     top_opportunity = opps[0] if opps else None
     avg_roi = round(sum(o["roi"] for o in opps) / len(opps), 2) if opps else 0.0
 
@@ -55,33 +55,19 @@ def dashboard():
         opportunities=opps[:5]
     )
 
-@app.route("/opportunities")
-def opportunities():
-    """All Detected Opportunities View"""
+
+@app.route("/surebets")
+def surebets():
+    """Surebet Analyzer View"""
     sport = request.args.get("sport", "all")
     min_roi = request.args.get("min_roi", type=float)
     bookmaker = request.args.get("bookmaker", "all")
 
-    opps = service.get_filtered_opportunities(sport=sport, min_roi=min_roi, bookmaker=bookmaker)
-    return render_template("opportunities.html", opportunities=opps)
-
-@app.route("/surebets")
-def surebets():
-    """Surebet Analyzer Dedicated View"""
-    surebets_list = service.get_filtered_opportunities(opp_type="surebet")
+    surebets_list = service.get_filtered_opportunities(
+        sport=sport, min_roi=min_roi, bookmaker=bookmaker
+    )
     return render_template("surebets.html", opportunities=surebets_list)
 
-@app.route("/valuebets")
-def valuebets():
-    """Value Betting Dedicated View"""
-    valuebets_list = service.get_filtered_opportunities(opp_type="valuebet")
-    return render_template("valuebets.html", opportunities=valuebets_list)
-
-@app.route("/range")
-def range_strategy():
-    """Range Strategy Dedicated View"""
-    range_list = service.get_filtered_opportunities(opp_type="range")
-    return render_template("range.html", opportunities=range_list)
 
 @app.route("/odds")
 def odds_view():
@@ -89,16 +75,19 @@ def odds_view():
     events = db.get_events()
     return render_template("odds.html", events=events, provider_status=service.get_provider_status())
 
+
 @app.route("/history")
 def history():
     """History and Simulations View"""
     history_logs = db.get_history()
     return render_template("history.html", history=history_logs)
 
+
 @app.route("/settings")
 def settings():
     """System Settings View"""
     return render_template("settings.html", config=config)
+
 
 # ==========================================
 # LOCAL API ENDPOINTS
@@ -108,22 +97,17 @@ def settings():
 def api_events():
     """Get all events from provider"""
     events = service.provider.get_events() if config.PROVIDER_MODE != "API" else db.get_events()
-    if config.PROVIDER_MODE == "API":
-        return jsonify({
-            "success": True,
-            "message": "API mode uses /api/refresh to fetch real odds and preserve quota.",
-            "count": len(events),
-            "events": events
-        })
     return jsonify({"success": True, "count": len(events), "events": events})
+
 
 @app.route("/api/refresh", methods=["POST"])
 def api_refresh():
-    """Fetch provider data, analyze all modules, and store the fresh snapshot."""
+    """Fetch provider data, analyze surebets, and store the fresh snapshot."""
     if config.PROVIDER_MODE == "API" and not config.EXTERNAL_API_KEY:
         return jsonify({"success": False, "error": "EXTERNAL_API_KEY is required when PROVIDER_MODE=API"}), 400
     report = service.refresh_and_analyze_all()
     return jsonify({"success": True, "provider_mode": config.PROVIDER_MODE, "report": report})
+
 
 @app.route("/api/account", methods=["GET"])
 def api_account():
@@ -132,6 +116,7 @@ def api_account():
         return jsonify({"success": False, "error": "Account endpoint is only available in API mode"}), 400
     return jsonify({"success": True, "account": service.provider.get_account()})
 
+
 @app.route("/api/bookmakers", methods=["GET"])
 def api_bookmakers():
     """Get available bookmakers from the active API provider."""
@@ -139,6 +124,7 @@ def api_bookmakers():
         return jsonify({"success": False, "error": "Bookmakers endpoint is only available in API mode"}), 400
     bookmakers = service.provider.get_bookmakers()
     return jsonify({"success": True, "count": len(bookmakers), "bookmakers": bookmakers})
+
 
 @app.route("/api/tournaments", methods=["GET"])
 def api_tournaments():
@@ -157,6 +143,7 @@ def api_tournaments():
         ]
     return jsonify({"success": True, "count": len(tournaments), "tournaments": tournaments})
 
+
 @app.route("/api/fixtures", methods=["GET"])
 def api_fixtures():
     """Get upcoming OddsPapi fixtures for configured bookmakers."""
@@ -165,51 +152,32 @@ def api_fixtures():
     fixtures = service.provider.get_fixtures()
     return jsonify({"success": True, "count": len(fixtures), "fixtures": fixtures})
 
+
 @app.route("/api/provider/status", methods=["GET"])
 def api_provider_status():
     """Return safe diagnostics about the current provider and last refresh."""
     return jsonify({"success": True, "status": service.get_provider_status()})
 
-@app.route("/api/opportunities", methods=["GET"])
-def api_opportunities():
-    """Get all analyzed opportunities with optional filters"""
-    opp_type = request.args.get("type")
+
+@app.route("/api/surebets", methods=["GET"])
+def api_surebets():
+    """Get active Surebets with optional filters"""
     sport = request.args.get("sport")
     min_roi = request.args.get("min_roi", type=float)
     bookmaker = request.args.get("bookmaker")
 
-    opps = service.get_filtered_opportunities(
-        opp_type=opp_type, sport=sport, min_roi=min_roi, bookmaker=bookmaker
-    )
-    return jsonify({"success": True, "count": len(opps), "opportunities": opps})
-
-@app.route("/api/surebets", methods=["GET"])
-def api_surebets():
-    """Get active Surebets"""
-    opps = service.get_filtered_opportunities(opp_type="surebet")
+    opps = service.get_filtered_opportunities(sport=sport, min_roi=min_roi, bookmaker=bookmaker)
     return jsonify({"success": True, "count": len(opps), "surebets": opps})
 
-@app.route("/api/valuebets", methods=["GET"])
-def api_valuebets():
-    """Get active Value Bets"""
-    opps = service.get_filtered_opportunities(opp_type="valuebet")
-    return jsonify({"success": True, "count": len(opps), "valuebets": opps})
-
-@app.route("/api/ranges", methods=["GET"])
-def api_ranges():
-    """Get active Range Strategy opportunities"""
-    opps = service.get_filtered_opportunities(opp_type="range")
-    return jsonify({"success": True, "count": len(opps), "ranges": opps})
 
 @app.route("/api/calculate", methods=["POST"])
 def api_calculate():
     """
-    Calculator Endpoint for custom stake/ROI simulations
+    Surebet calculator endpoint for custom stake simulations.
     Body format:
     {
       "bankroll": 500,
-      "odds": [2.15, 3.40, 3.60],
-      "type": "surebet"
+      "odds": [2.15, 3.40, 3.60]
     }
     """
     data = request.get_json() or {}
@@ -220,41 +188,18 @@ def api_calculate():
 
     bankroll = float(calc_request.bankroll)
     odds = [float(o) for o in calc_request.odds]
-    calc_type = calc_request.type
 
-    if not odds or any(float(o) <= 1.0 for o in odds):
+    if not odds or any(o <= 1.0 for o in odds):
         return jsonify({"success": False, "error": "Invalid odds provided. Odds must be > 1.0"}), 400
 
-    if calc_type == "surebet":
-        res = StakeCalculator.calculate_surebet_stakes(bankroll, odds)
-        res["currency"] = "S/"
-        return jsonify({"success": True, "result": res})
-    elif calc_type == "valuebet":
-        model_prob = float(data.get("model_probability", 0.5))
-        if model_prob <= 0.0 or model_prob >= 1.0:
-            return jsonify({"success": False, "error": "model_probability must be between 0 and 1"}), 400
-        bookmaker_odds = odds[0]
-        val_res = ROICalculator.calculate_value_edge(model_prob, bookmaker_odds)
-        kelly_res = StakeCalculator.calculate_kelly_stake(bankroll, model_prob, bookmaker_odds)
-        return jsonify({"success": True, "currency": "S/", "value_analysis": val_res, "stake_analysis": kelly_res})
+    res = StakeCalculator.calculate_surebet_stakes(bankroll, odds)
+    res["currency"] = "S/"
+    return jsonify({"success": True, "result": res})
 
-    return jsonify({"success": False, "error": "Unsupported calculation type"}), 400
-
-@app.route("/api/statistics", methods=["GET"])
-def api_statistics():
-    """Get team statistics endpoint"""
-    team_name = request.args.get("team", "Arsenal")
-    if hasattr(service.provider, "get_all_historical_matches"):
-        matches = service.provider.get_all_historical_matches()
-        goals_stat = GoalsStatistics.analyze_team_goals(matches, team_name)
-        corners_stat = CornersStatistics.analyze_team_corners(matches, team_name)
-        return jsonify({"success": True, "goals": goals_stat, "corners": corners_stat})
-    return jsonify({"success": False, "error": "Statistics not available in current provider mode"})
 
 if __name__ == "__main__":
-    # Run application on local server
     print("=" * 60)
-    print(f"  BETTING OPPORTUNITY ANALYZER - Running in {config.PROVIDER_MODE} mode")
+    print(f"  SUREBET ANALYZER - Running in {config.PROVIDER_MODE} mode")
     print("  Access local server at http://127.0.0.1:5000")
     print("=" * 60)
     app.run(host="127.0.0.1", port=config.PORT, debug=config.FLASK_DEBUG)

@@ -11,25 +11,25 @@ if env_path.exists():
 else:
     load_dotenv()
 
+
 class Config:
     """Application Configuration Settings"""
     BASE_DIR: Path = BASE_DIR
     FLASK_ENV: str = os.getenv("FLASK_ENV", "development")
     FLASK_DEBUG: bool = os.getenv("FLASK_DEBUG", "1") == "1"
     PORT: int = int(os.getenv("PORT", 5000))
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "betting-analyzer-secret-key")
-    
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "surebet-analyzer-secret-key")
+
     # Mode: DEMO or API
     PROVIDER_MODE: str = os.getenv("PROVIDER_MODE", "DEMO").upper()
-    
+
     # SQLite Database
     DATABASE_PATH: str = str(BASE_DIR / os.getenv("DATABASE_PATH", "betting_analyzer.db"))
-    
-    # Sample data paths
+
+    # Sample data path (demo mode)
     SAMPLE_ODDS_PATH: Path = BASE_DIR / "data" / "sample_odds.json"
-    HISTORICAL_MATCHES_PATH: Path = BASE_DIR / "data" / "historical_matches.json"
-    
-    # External API Settings (Isolated)
+
+    # External API Settings (OddsPapi)
     EXTERNAL_API_KEY: str = os.getenv("EXTERNAL_API_KEY", "")
     EXTERNAL_API_URL: str = os.getenv("EXTERNAL_API_URL", "https://api.oddspapi.io/v4")
 
@@ -45,5 +45,6 @@ class Config:
     ODDSPAPI_TOURNAMENT_IDS: str = os.getenv("ODDSPAPI_TOURNAMENT_IDS", "")
     ODDSPAPI_FIXTURE_DAYS: int = int(os.getenv("ODDSPAPI_FIXTURE_DAYS", "2"))
     ODDSPAPI_MAX_FIXTURES: int = int(os.getenv("ODDSPAPI_MAX_FIXTURES", "3"))
+
 
 config = Config()

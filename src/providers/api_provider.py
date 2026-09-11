@@ -39,18 +39,7 @@ class APIProvider(OddsProvider):
             return []
 
         try:
-            if self.use_tournaments and self.tournament_ids:
-                raw_data = self._request(
-                    "odds-by-tournaments",
-                    {
-                        "tournamentIds": self.tournament_ids,
-                        "bookmakers": self.bookmakers,
-                        "language": self.language,
-                        "oddsFormat": self.odds_format,
-                    },
-                )
-            else:
-                raw_data = self._get_odds_by_limited_fixtures()
+            raw_data = self._get_odds_by_limited_fixtures()
         except httpx.HTTPStatusError as exc:
             self.last_status["error"] = f"HTTP {exc.response.status_code}: {exc.response.text[:500]}"
             return []
@@ -162,18 +151,29 @@ class APIProvider(OddsProvider):
         """Fetch upcoming fixtures using the documented /v4/fixtures filters."""
         now = datetime.now(timezone.utc)
         later = now + timedelta(days=max(self.fixture_days, 1))
-        raw = self._request(
-            "fixtures",
-            {
-                "sportId": self.sport_id,
-                "from": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "to": later.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                "statusId": 0,
-                "hasOdds": "true",
-                "bookmakers": self.bookmakers,
-                "language": self.language,
-            },
-        )
+
+        base_params = {
+            "sportId": self.sport_id,
+            "from": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "to": later.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "statusId": 0,
+            "hasOdds": "true",
+            "bookmakers": self.bookmakers,
+            "language": self.language,
+        }
+
+        if self.use_tournaments and self.tournament_ids:
+            all_fixtures: List[Dict[str, Any]] = []
+            tids = [tid.strip() for tid in self.tournament_ids.split(",") if tid.strip()]
+            for tid in tids:
+                try:
+                    raw = self._request("fixtures", {**base_params, "tournamentId": tid})
+                    all_fixtures.extend(self._as_list(raw))
+                except Exception:
+                    continue
+            return all_fixtures
+
+        raw = self._request("fixtures", base_params)
         return self._as_list(raw)
 
     def _request(self, endpoint: str, params: Dict[str, Any]) -> Any:

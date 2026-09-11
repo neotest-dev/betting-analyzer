@@ -3,19 +3,28 @@ from typing import List, Dict, Any
 from src.calculators.stakes import StakeCalculator
 from src.odds.matcher import EventMatcher
 
+
 class SurebetAnalyzer:
     """
     SUREBET ANALYZER MODULE
-    Detects mathematical arbitrage opportunities across multiple bookmakers.
+    Detects mathematical arbitrage opportunities across MULTIPLE bookmakers.
+
+    A valid surebet requires:
+      1. inverse_sum = sum(1/odd_i) < 1.0  (mathematical arbitrage condition)
+      2. Each selection must come from a DIFFERENT bookmaker (cross-bookmaker)
+
+    Rule #2 prevents false positives where all best odds happen to come from the
+    same operator — those are NOT exploitable in practice.
     """
 
     @staticmethod
     def analyze_event(event: Dict[str, Any], default_bankroll: float = 100.0) -> List[Dict[str, Any]]:
         """
         Analyze an event for surebet opportunities across bookmakers.
+
         Formula:
           inverse_sum = 1/odds_1 + 1/odds_2 (+ 1/odds_3)
-          If inverse_sum < 1 => Surebet opportunity.
+          If inverse_sum < 1 AND bookmakers are diverse => Surebet opportunity.
           ROI = (1/inverse_sum - 1) * 100
         """
         bookmakers = event.get("bookmakers", [])
@@ -25,12 +34,11 @@ class SurebetAnalyzer:
         market = event.get("market", "1X2")
         best_odds = EventMatcher.extract_best_odds(bookmakers)
 
-        # Check required outcomes based on market
+        # Determine required outcome keys for this market type
         required_outcomes = []
         if market == "1X2":
             required_outcomes = ["home_win", "draw", "away_win"]
         elif market in ["Moneyline", "Over/Under Goals 2.5", "Corners Over/Under 9.5"]:
-            # 2-way markets
             keys = list(best_odds.keys())
             if len(keys) >= 2:
                 required_outcomes = keys[:2]
@@ -40,6 +48,15 @@ class SurebetAnalyzer:
 
         odds_list = [best_odds[k]["odds"] for k in required_outcomes]
         bookies_list = [best_odds[k]["bookmaker"] for k in required_outcomes]
+
+        # ── VALIDATION: Bookmaker diversity ──────────────────────────────────
+        # A surebet requires placing bets at DIFFERENT bookmakers. If all best
+        # odds come from the same operator, this is a mathematical coincidence,
+        # NOT an exploitable arbitrage opportunity.
+        unique_bookmakers = set(bookies_list)
+        if len(unique_bookmakers) < 2:
+            return []
+        # ─────────────────────────────────────────────────────────────────────
 
         calculation = StakeCalculator.calculate_surebet_stakes(default_bankroll, odds_list)
 
@@ -76,6 +93,8 @@ class SurebetAnalyzer:
                 "inverse_sum": calculation["inverse_sum"],
                 "profit": calculation["profit"],
                 "bankroll": default_bankroll,
+                "unique_bookmakers": sorted(unique_bookmakers),
+                "unique_bookmakers_count": len(unique_bookmakers),
                 "legs": legs
             }
         }]

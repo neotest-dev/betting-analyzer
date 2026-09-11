@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Ajustes del Sistema - Betting Opportunity Analyzer{% endblock %}
+{% block title %}Ajustes del Sistema - Surebet Analyzer{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -10,25 +10,24 @@
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+<div class="grid-settings">
     <div class="card">
-        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">Estado del Proveedor</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        <h3 class="fs-xl fw-700 text-white mb-md">Estado del Proveedor</h3>
+        <p class="text-muted fs-body mb-md">
             Actualmente el sistema está operando en <strong>MODO {{ config.PROVIDER_MODE }}</strong>.
         </p>
-        <div style="background: rgba(15,23,42,0.8); padding: 1rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+        <div class="panel-code">
             <div><strong>Sample Odds JSON:</strong> <code>data/sample_odds.json</code></div>
-            <div><strong>Historical Matches JSON:</strong> <code>data/historical_matches.json</code></div>
             <div><strong>Base de Datos SQLite:</strong> <code>{{ config.DATABASE_PATH }}</code></div>
         </div>
     </div>
 
     <div class="card">
-        <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 1rem;">Seguridad y Variables (.env)</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+        <h3 class="fs-xl fw-700 text-white mb-md">Seguridad y Variables (.env)</h3>
+        <p class="text-muted fs-body mb-md">
             Las claves de API externas se encuentran aisladas en el archivo local <code>.env</code> y no son expuestas en el frontend.
         </p>
-        <div style="background: rgba(15,23,42,0.8); padding: 1rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+        <div class="panel-code">
             <div><strong>FLASK_ENV:</strong> {{ config.FLASK_ENV }}</div>
             <div><strong>Puerto Local:</strong> {{ config.PORT }}</div>
             <div><strong>API Provider URL:</strong> {{ config.EXTERNAL_API_URL }}</div>
