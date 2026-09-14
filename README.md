@@ -208,18 +208,28 @@ El proyecto puede usar cuotas reales desde OddsPapi. La clave de API se configur
 ### Configuración en `.env`
 
 ```env
+# Modo de proveedor: API para cuotas en tiempo real de OddsPapi
 PROVIDER_MODE=API
+
+# Tu clave de API privada de OddsPapi
 EXTERNAL_API_KEY=TU_API_KEY_DE_ODDSPAPI
 EXTERNAL_API_URL=https://api.oddspapi.io/v4
 
+# Deporte (10 = Fútbol) y formato de cuota (decimal)
 ODDSPAPI_SPORT_ID=10
 ODDSPAPI_LANGUAGE=es
 ODDSPAPI_ODDS_FORMAT=decimal
-ODDSPAPI_BOOKMAKERS=apuestatotal,betano.pe,inkabet,pinnacle
-ODDSPAPI_USE_TOURNAMENTS=0
-ODDSPAPI_TOURNAMENT_IDS=
-ODDSPAPI_FIXTURE_DAYS=2
-ODDSPAPI_MAX_FIXTURES=3
+
+# Casas de apuestas a consultar
+ODDSPAPI_BOOKMAKERS=pinnacle,betano.pe,apuestatotal,inkabet,betsson,bet365,1xbet
+
+# Filtrado por torneos específicos (1 = Sí, 0 = No)
+ODDSPAPI_USE_TOURNAMENTS=1
+ODDSPAPI_TOURNAMENT_IDS=7,17,8,23,35,34,406,384,480
+
+# Ventana de días futuros y límite de partidos por consulta
+ODDSPAPI_FIXTURE_DAYS=3
+ODDSPAPI_MAX_FIXTURES=15
 ```
 
 ---
